@@ -13,7 +13,7 @@ import scipy as sp
 #-------------------------------
 def uint8_2_float(imagem):
     resultado = np.ndarray(shape=imagem.shape,dtype='float')
-    resultado = img*(1./255)
+    resultado[:] = img*(1./255)
     return resultado
 
 def float_2_uint8(imagem):
@@ -23,5 +23,28 @@ def float_2_uint8(imagem):
 
 def float_2_int8(imagem):
     resultado = np.ndarray(shape=imagem.shape, dtype='int8')
-    resultado[:] = (img * 255) - 127
+    resultado[:] = (imagem * 255) - 127
     return resultado
+
+#--------------------------------
+#
+#
+#--------------------------------
+def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,fator_de_amplificacao=1):
+    print("Aplicando uma filtragem temporal que seleciona as frequencias entre "+str(freq_min)+" e "+str(freq_max)+" Hz")
+    fft = sp.fftpack.rfft(data,axis=eixos)
+    frequencias = sp.fftpack.fftfreq(data.shape[0],d=1.0/fps)
+    #Onde d eh o tempo entre um frame e o proximo
+    limite_inferior = (np.abs(frequencias - freq_min)).argmin()
+    limite_superior = (np.abs(frequencias - freq_max)).argmin()
+
+    fft[:limite_inferior] = 0
+    fft[limite_superior:-limite_superior] = 0
+    fft[-limite_inferior]=0
+
+    resultado = np.ndarray(shape=data.shape, dtype ='float')
+    resultado[:] = sp.fftpack.ifft(fft,axis=0)
+    resultado *= fator_de_amplificacao
+
+    return resultado
+#-----------------------------------
