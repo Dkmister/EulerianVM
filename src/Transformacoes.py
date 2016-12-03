@@ -30,7 +30,9 @@ def float_2_int8(imagem):
 #
 #
 #--------------------------------
-def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,fator_de_amplificacao=1):
+def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,taxa_de_amplificacao=1):
+    # aplica uma filtragem temporal que seleciona as frequencias entre freq_min e freq_max
+    # e entao retorna esse sinal amplificado pela taxa_de_amplificacao
     print("Aplicando uma filtragem temporal que seleciona as frequencias entre "+str(freq_min)+" e "+str(freq_max)+" Hz")
     fft = sp.fftpack.rfft(data,axis=eixos)
     frequencias = sp.fftpack.fftfreq(data.shape[0],d=1.0/fps)
@@ -40,14 +42,19 @@ def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,fator
     limite_inferior = (np.abs(frequencias - freq_min)).argmin()
     limite_superior = (np.abs(frequencias - freq_max)).argmin()
     
-    #
-    fft[:limite_inferior] = 0
-    fft[limite_superior:-limite_superior] = 0
+    # zera todas as frequencias mais baixas que o limite inferior
+	# e tambem suas frequencias conjugadas
     fft[-limite_inferior:]=0
+    fft[:limite_inferior] = 0
+	# zera todas as frequencias mais altas que o limite superior
+	# e tambem suas frequencias conjugadas
+    fft[limite_superior:-limite_superior] = 0
 
+    # ifft para transformar o sinal de volta para o dominio espacial
     resultado = np.ndarray(shape=data.shape, dtype ='float')
     resultado[:] = sp.fftpack.ifft(fft,axis=0)
-    resultado *= fator_de_amplificacao
+    # amplifica o sinal
+    resultado *= taxa_de_amplificacao
 
     return resultado
 #-----------------------------------
