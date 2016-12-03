@@ -1,70 +1,109 @@
-#from eularian_magnification.base import eulerian_magnification, show_frequencies
-from Transformacoes import uint8_2_float
+from Transformacoes import uint8_2_float,filtro_passabandas_temporal
+import es
 import os
 import cv2
 import numpy
 print("imports ok")
 
-def uint8_to_float(img):
-    result = numpy.ndarray(shape=img.shape, dtype='float')
-    result[:] = img * (1. / 255)
-    return result
-
-def get_capture_dimensions(capture):
-    """Get the dimensions of a capture"""
-    width = int(capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    return width, height
+def cria_piramide_gaussiana_imagem(imagem, num_camadas):
+	# gera a piramide gaussiana ate o nivel num_camadas a partir da imagem
 	
-def _load_video(video_filename):
-    """Load a video into a numpy array"""
-    print("Loading " + video_filename)
-    if not os.path.isfile(video_filename):
-        raise Exception("File Not Found: %s" % video_filename)
-    # noinspection PyArgumentList
-    capture = cv2.VideoCapture(video_filename)
-    frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
-    width, height = get_capture_dimensions(capture)
-    fps = int(capture.get(cv2.CAP_PROP_FPS))
-    x = 0
-    vid_frames = numpy.zeros((frame_count, height, width, 3), dtype='uint8')
-    while capture.isOpened():
-        ret, frame = capture.read()
-        if not ret:
+	camadaAtual = numpy.ndarray(shape=imagem.shape, dtype="float")
+	#base da piramide é a imagem original
+	camadaAtual[:] = imagem
+	piramide_gaussiana_imagem = [camadaAtual]
+	
+	for pyramid_level in range(1, num_camadas):
+		# gera proxima camada da piramide
+		camadaAtual = cv2.pyrDown(camadaAtual)
+		piramide_gaussiana_imagem.append(camadaAtual)
+	
+	return piramide_gaussiana_imagem
+	
+def cria_piramide_laplaciana_imagem(imagem, num_camadas):
+	# gera a piramide laplaciana ate o nivel num_camadas a partir da imagem
+	
+	piramide_gaussiana = cria_piramide_gaussiana_imagem(imagem, num_camadas)
+	piramide_laplaciana = []
+	for i in range(num_camadas - 1):
+		# cada camada é a diferença entre 2 camadas da piramide gaussiana
+		camadaAtual = (piramide_gaussiana[i] - cv2.pyrUp(piramide_gaussiana[i + 1]))
+		piramide_laplaciana.append(camadaAtual + 0)
+	
+	piramide_laplaciana.append(piramide_gaussiana[-1])
+	return piramide_laplaciana
+
+def cria_piramide_laplaciana_(video, num_camadas):
+	# cria uma piramide laplaciana de videos a partir do video
+	
+	piramide_laplaciana = []
+	# frame_count, height, width, colors = video.shape
+	for indice_frame, frame in enumerate(video):
+		piramide_imagens = cria_piramide_laplaciana_imagem(frame, num_camadas)
+	
+		for indice_camada, frame_da_camada in enumerate(piramide_imagens):
+			if indice_frame == 0:
+				piramide_laplaciana.append(
+					numpy.zeros((video.shape[0], frame_da_camada.shape[0], frame_da_camada.shape[1], 3),
+									dtype="float"))
+	
+			piramide_laplaciana[indice_camada][indice_frame] = frame_da_camada
+	
+	return piramide_laplaciana
+
+def colapsa_piramide_laplaciana_imagem(piramide_laplaciana_imagens):
+	# recalcula a imagem original a partir da sua piramide laplaciana
+    imagem = piramide_laplaciana_imagens.pop()
+    while piramide_laplaciana_imagens:
+        imagem = cv2.pyrUp(img) + (piramide_laplaciana_imagens.pop() - 0)
+		
+    return imagem
+
+
+def colapsa_piramide_laplaciana(piramide_laplaciana):
+	# recalcula o video original a partir de sua piramide laplaciana
+    i = 0
+    while True:
+        try:
+            piramide_laplaciana_imagens = [video[i] for video in piramide_laplaciana]
+			# recalculando cada frame do video original em cima da primeira camada
+            piramide_laplaciana[0][i] = colapsa_piramide_laplaciana_imagem(piramide_laplaciana_imagens)
+            i += 1
+        except IndexError:
+			# para ir ate a ultima camada da piramide
             break
+    return piramide_laplaciana[0]
 
-        vid_frames[x] = frame
-        x += 1
-    capture.release()
+def magnificacao_euleriana(video_data, fps, freq_min, freq_max, amplificacao, num_camadas=4, skip_levels_at_top=2):
 
-    return vid_frames, fps
-
-def load_video_float(video_filename):
-    vid_data, fps = _load_video(video_filename)
-    return uint8_2_float(vid_data), fps
+	# cria a piramide laplaciana a partir do video
+    piramide_laplaciana = cria_piramide_laplaciana_(video_data, num_camadas=num_camadas)
 	
-def play_video(video_filename):
-    orig_vid, fps = load_video_float(video_filename)
-    play_vid_data(orig_vid)
+    for i, video in enumerate(piramide_laplaciana):
+        if i < skip_levels_at_top or i >= len(piramide_laplaciana) - 1:
+			# nao amplifica os niveis mais ao topo (skip_levels_at_top)
+			# porque eles geralmente contem muito ruido
+			# nem a base da piramide porque ela é o video original
+            continue
+			
+		# aplica filtragem temporal em cada pixel dos videosa de cada uma das camadas da piramide
+        bandpassed = filtro_passabandas_temporal(video, fps, freq_min=freq_min, freq_max=freq_max, taxa_de_amplificacao=amplificacao)
 
-def play_vid_data(frames):
-    play_pyramid([frames])
+        es.play_video_data(bandpassed)
+
+        piramide_laplaciana[i] += bandpassed
+        #es.play_vid_data(piramide_laplaciana[i])
+
+    video_data = colapsa_piramide_laplaciana(piramide_laplaciana)
+    return video_data
 	
-def play_pyramid(pyramid):
-	i = 0
-	while True:
-		try:
-			for level, vid in enumerate(pyramid):
-				cv2.imshow('Level %i' % level, vid[i])
-			i += 1
-			if cv2.waitKey(1) & 0xFF == ord('q'):
-				break
-		except IndexError:
-			break
-#show_frequencies('face.mp4')
-#eulerian_magnification('face.mp4', image_processing='gaussian', pyramid_levels=6, freq_min=50.0 / 60.0, freq_max=1.0, amplification=50)
-#play_pyramid(pyramid)
-video, fps = _load_video('face.mp4')
-play_vid_data(video)
 
+#
+#--------
+# "main":
+
+video, fps = es._carrega_video('face.mp4')
+#es.play_video_data(video)
+videoEuler = magnificacao_euleriana(video, fps, freq_min=0.5, freq_max=10, amplificacao=5)
+#es.play_video_data(videoEuler)
 print("fim \n fps:" + str(fps))
