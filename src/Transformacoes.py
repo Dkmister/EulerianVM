@@ -14,7 +14,7 @@ from scipy.fftpack import rfft,ifft,fftfreq
 #-------------------------------
 def uint8_2_float(imagem):
     resultado = np.ndarray(shape=imagem.shape,dtype='float')
-    resultado[:] = img*(1./255)
+    resultado[:] = imagem * (1./255)
     return resultado
 
 def float_2_uint8(imagem):

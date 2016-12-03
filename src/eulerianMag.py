@@ -104,7 +104,7 @@ def magnificacao_euleriana(video_data, fps, freq_min, freq_max, amplificacao, nu
 
 video, fps = es._carrega_video('face.mp4')
 #es.play_video_data(video)
-videoEuler = magnificacao_euleriana(video, fps, freq_min=0.5, freq_max=10, amplificacao=5)
-#es.play_video_data(videoEuler)
-es.salva_video(videoEuler,fps,nome_arquivo='resultado.avi')
-print("fim \n fps:" + str(fps))
+videoEuler = magnificacao_euleriana(video, fps, freq_min=0.83, freq_max=1, amplificacao=10)
+es.play_video_data(videoEuler)
+es.salva_video(videoEuler,fps,nome_arquivo='resultado0.avi')
+print("fim \nfps:" + str(fps))
