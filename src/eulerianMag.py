@@ -55,7 +55,7 @@ def colapsa_piramide_laplaciana_imagem(piramide_laplaciana_imagens):
 	# recalcula a imagem original a partir da sua piramide laplaciana
     imagem = piramide_laplaciana_imagens.pop()
     while piramide_laplaciana_imagens:
-        imagem = cv2.pyrUp(img) + (piramide_laplaciana_imagens.pop() - 0)
+        imagem = cv2.pyrUp(imagem) + (piramide_laplaciana_imagens.pop() - 0)
 		
     return imagem
 

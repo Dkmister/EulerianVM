@@ -1,5 +1,6 @@
 import numpy as np
 import scipy as sp
+from scipy.fftpack import rfft,ifft,fftfreq
 #-------------------------------
 # Arquivo de transformacoes:
 #-------------------------------
@@ -34,8 +35,8 @@ def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,taxa_
     # aplica uma filtragem temporal que seleciona as frequencias entre freq_min e freq_max
     # e entao retorna esse sinal amplificado pela taxa_de_amplificacao
     print("Aplicando uma filtragem temporal que seleciona as frequencias entre "+str(freq_min)+" e "+str(freq_max)+" Hz")
-    fft = sp.fftpack.rfft(data,axis=eixos)
-    frequencias = sp.fftpack.fftfreq(data.shape[0],d=1.0/fps)
+    fft = rfft(data,axis=eixos)
+    frequencias = fftfreq(data.shape[0],d=1.0/fps)
     # Onde d eh o tempo entre um frame e o proximo
     
     # Calcula os limites e inferior reais para a filtragem de sequencias
@@ -50,9 +51,10 @@ def filtro_passabandas_temporal(data,fps,freq_min=0.833,freq_max=1,eixos=0,taxa_
 	# e tambem suas frequencias conjugadas
     fft[limite_superior:-limite_superior] = 0
 
+
     # ifft para transformar o sinal de volta para o dominio espacial
     resultado = np.ndarray(shape=data.shape, dtype ='float')
-    resultado[:] = sp.fftpack.ifft(fft,axis=0)
+    resultado[:] = ifft(fft,axis=0)
     # amplifica o sinal
     resultado *= taxa_de_amplificacao
 
