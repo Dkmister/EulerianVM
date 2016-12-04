@@ -189,6 +189,10 @@ def get_frame_dimensions(frame):
 #---------------------------------------------------
 # python3 emBR.py face.mp4 laplaciana 0.83 1 25 4
 #---------------------------------------------------
+# Opcao de visualizacao de frequencias:
+# ---------------------------------------------------
+# python3 emBR.py freq face.mp4
+#---------------------------------------------------
 if(len(sys.argv) == 7):
 	nome_arq = sys.argv[1]
 	tip_piramide = sys.argv[2]
